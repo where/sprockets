@@ -16,15 +16,28 @@ module Sprockets
       # Lookup value in cache
       def [](key)
         pathname = @root.join(key)
-        pathname.exist? ? pathname.open('rb') { |f| Marshal.load(f) } : nil
+
+        if pathname.exist?  
+          pathname.open('rb') { |f| Marshal.load(f) }
+        else
+          nil
+        end
       end
 
       # Save value to cache
       def []=(key, value)
+        puts "Storing[#{key} as #{value.class} keys[#{value['class']}]]"
         # Ensure directory exists
-        FileUtils.mkdir_p @root.join(key).dirname
 
-        @root.join(key).open('w') { |f| Marshal.dump(value, f)}
+        if @root.join("#{key}.lock").exist?
+          puts "File Locked; Currently caching to this file, so skipping"
+        else
+          FileUtils.mkdir_p @root.join("#{key}.lock").dirname
+          @root.join("#{key}.lock").open('wb') {|f| f.puts 'locked' }
+          @root.join("#{key}+").open('wb') { |f| Marshal.dump(value, f)}
+          FileUtils.rm_rf @root.join("#{key}.lock")
+        end
+
         value
       end
     end
